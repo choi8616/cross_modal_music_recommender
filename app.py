@@ -1,4 +1,5 @@
 import os
+import base64 # [NEW] Added to handle audio embedding
 # [Important] Prevent Mac conflicts
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 os.environ['OMP_NUM_THREADS'] = '1'
@@ -39,13 +40,12 @@ class MusicRecommenderApp:
         self.recommender = BridgeRecommender()
         print(f"✅ App Ready: Loaded {len(self.metadata)} songs.")
     
-    # [UX] English Progress Messages
     def recommend(self, image, topk: int = 5, progress=gr.Progress()):
         """
         Analyzes image and recommends music.
         """
         if image is None:
-            return "⚠️ Please upload an image!", "", None, ""
+            return "⚠️ Please upload an image!", "", ""
         
         temp_file_path = None
         
@@ -64,12 +64,14 @@ class MusicRecommenderApp:
             
             # Step 2: AI Analysis
             progress(0.4, desc="🧠 AI analyzing vibe...")
-            query_vector, caption, enhanced_caption = self.recommender.get_query_vector(temp_file_path)
             
-            if query_vector is None:
-                return "❌ Image analysis failed", "", None, ""
+            ai_result = self.recommender.get_query_vector(temp_file_path)
             
-            # Markdown Output (English)
+            if ai_result is None or (isinstance(ai_result, tuple) and ai_result[0] is None):
+                return "❌ AI Error: Please check your VS Code terminal for the actual error message!", "", ""
+                
+            query_vector, caption, enhanced_caption = ai_result
+            
             analysis_text = f"""
             ### 👁️ AI Vision Analysis
             * **📝 Description:** {caption}
@@ -85,21 +87,20 @@ class MusicRecommenderApp:
             similarities = self.vectors @ query_vector
             
             top_indices = np.argsort(similarities)[::-1][:topk]
-            results_html = self._format_results(top_indices, similarities)
             
-            top_idx = int(top_indices[0])
-            top_audio_path = self.metadata[top_idx].get("file_path")
-            final_audio_path = top_audio_path if top_audio_path and os.path.exists(top_audio_path) else None
+            # Generate the HTML with embedded audio players
+            results_html = self._format_results(top_indices, similarities)
             
             # Step 4: Done
             progress(1.0, desc="✨ Done!")
             status_msg = f"✅ Success! Found top {topk} songs."
             
-            return status_msg, results_html, final_audio_path, analysis_text
+            # [MODIFIED] Now only returning 3 things (removed the separate audio file path)
+            return status_msg, results_html, analysis_text
             
         except Exception as e:
             traceback.print_exc()
-            return f"❌ Error occurred: {str(e)}", "", None, ""
+            return f"❌ Error occurred: {str(e)}", "", ""
         
         finally:
             if temp_file_path and os.path.exists(temp_file_path):
@@ -114,8 +115,28 @@ class MusicRecommenderApp:
             mood = song.get('mood', 'Unknown')
             genre = song.get('genre', 'Unknown')
             title = song.get('title', 'Unknown Title')
+            audio_path = song.get('file_path')
+            
             opacity = max(0.6, min(1.0, score + 0.2)) 
             
+            # [NEW] Embed the audio file directly into the HTML card
+            audio_html = ""
+            if audio_path and os.path.exists(audio_path):
+                try:
+                    with open(audio_path, "rb") as audio_file:
+                        encoded_audio = base64.b64encode(audio_file.read()).decode('utf-8')
+                    
+                    audio_html = f"""
+                    <div style="margin-top: 12px; background: rgba(255,255,255,0.1); border-radius: 8px; padding: 5px;">
+                        <audio controls controlsList="nodownload" style="width: 100%; height: 35px; outline: none;">
+                            <source src="data:audio/mpeg;base64,{encoded_audio}" type="audio/mpeg">
+                            Your browser does not support the audio element.
+                        </audio>
+                    </div>
+                    """
+                except Exception as e:
+                    print(f"Could not load audio for {title}: {e}")
+
             html += f"""
             <div style='background: linear-gradient(135deg, rgba(102, 126, 234, {opacity}) 0%, rgba(118, 75, 162, {opacity}) 100%);
                 border-radius: 12px; padding: 15px; margin-bottom: 10px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
@@ -127,6 +148,7 @@ class MusicRecommenderApp:
                     🎭 {mood} | 🎸 {genre}
                 </div>
                 <div style='text-align: right; font-size: 0.8em; opacity: 0.8;'>Similarity: {score:.3f}</div>
+                {audio_html}
             </div>"""
         return html + "</div>"
 
@@ -157,15 +179,16 @@ def create_interface():
 
             # Right Column: Output
             with gr.Column(scale=5):
-                analysis_output = gr.Markdown(label="🧠 AI Analysis Result")
-                audio_output = gr.Audio(label="🎧 Top Song Preview", type="filepath")
                 caption_output = gr.Textbox(label="Status", show_label=False, text_align="center")
-                results_output = gr.HTML(label="Playlist")
+                analysis_output = gr.Markdown(label="🧠 AI Analysis Result")
+                results_output = gr.HTML(label="Playlist") 
+                # [MODIFIED] Removed the single global audio player!
         
         submit_btn.click(
             fn=lambda img, k: app.recommend(img, int(k)),
             inputs=[image_input, topk_slider],
-            outputs=[caption_output, results_output, audio_output, analysis_output]
+            # [MODIFIED] Now returning 3 outputs instead of 4
+            outputs=[caption_output, results_output, analysis_output]
         )
 
     return demo
@@ -173,5 +196,4 @@ def create_interface():
 if __name__ == "__main__":
     demo = create_interface()
     demo.queue()
-    # Using port 7861 to avoid conflicts
-    demo.launch(server_name="0.0.0.0", share=False)
+    demo.launch(server_name="0.0.0.0", share=True)

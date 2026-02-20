@@ -1,0 +1,7 @@
+gradio
+torch
+torchvision
+torchaudio
+transformers
+numpy
+pillow
