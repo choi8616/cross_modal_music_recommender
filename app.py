@@ -1,4 +1,5 @@
 import os
+import base64 # [NEW] Added to handle audio embedding
 # [Important] Prevent Mac conflicts
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 os.environ['OMP_NUM_THREADS'] = '1'
@@ -12,11 +13,11 @@ import time
 from pathlib import Path
 from typing import Tuple, Optional
 
-# image_to_vector.py가 같은 폴더에 있어야 합니다.
+# Ensure image_to_vector.py is in the same folder
 try:
     from image_to_vector import BridgeRecommender
 except ImportError:
-    print("⚠️ 경고: 'image_to_vector.py'를 찾을 수 없습니다.")
+    print("⚠️ Warning: 'image_to_vector.py' not found.")
     class BridgeRecommender: pass 
 
 class MusicRecommenderApp:
@@ -25,9 +26,9 @@ class MusicRecommenderApp:
         self.meta_path = Path(meta_path)
         
         if not self.db_path.exists() or not self.meta_path.exists():
-            raise FileNotFoundError("❌ 데이터베이스 파일이 없습니다.")
+            raise FileNotFoundError("❌ Database files not found. Please run 'Music_to_vector.py' first.")
 
-        print("⏳ 데이터베이스 로딩 중...")
+        print("⏳ Loading Database...")
         self.vectors = np.load(self.db_path)
         
         with open(self.meta_path, "r", encoding="utf-8") as f:
@@ -37,22 +38,21 @@ class MusicRecommenderApp:
         self.vectors = self.vectors / np.maximum(norms, 1e-12)
         
         self.recommender = BridgeRecommender()
-        print(f"✅ 앱 준비 완료: {len(self.metadata)}곡 로드됨.")
+        print(f"✅ App Ready: Loaded {len(self.metadata)} songs.")
     
-    # [UX] English Progress Messages
     def recommend(self, image, topk: int = 5, progress=gr.Progress()):
         """
-        이미지를 분석하고 음악을 추천합니다.
+        Analyzes image and recommends music.
         """
         if image is None:
-            return "⚠️ Please upload an image!", "", None, ""
+            return "⚠️ Please upload an image!", "", ""
         
         temp_file_path = None
         
         try:
-            # 1단계: 이미지 처리
-            progress(0.1, desc="📸 이미지 읽는 중...")
-            time.sleep(0.3)  # 너무 빨리 지나가면 UX가 안 좋아서 살짝 텀을 줌
+            # Step 1: Process Image
+            progress(0.1, desc="📸 Reading image...")
+            time.sleep(0.3)
             
             with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
                 temp_file_path = tmp.name
@@ -64,20 +64,22 @@ class MusicRecommenderApp:
             
             # Step 2: AI Analysis
             progress(0.4, desc="🧠 AI analyzing vibe...")
-            query_vector, caption, enhanced_caption = self.recommender.get_query_vector(temp_file_path)
             
-            if query_vector is None:
-                return "❌ Image analysis failed", "", None, ""
+            ai_result = self.recommender.get_query_vector(temp_file_path)
             
-            # Markdown Output (English)
+            if ai_result is None or (isinstance(ai_result, tuple) and ai_result[0] is None):
+                return "❌ AI Error: Please check your VS Code terminal for the actual error message!", "", ""
+                
+            query_vector, caption, enhanced_caption = ai_result
+            
             analysis_text = f"""
-            ### 👁️ AI 시각 분석 결과
-            * **📝 설명:** {caption}
-            * **✨ 분위기 키워드:** `{enhanced_caption}`
+            ### 👁️ AI Vision Analysis
+            * **📝 Description:** {caption}
+            * **✨ Mood Keywords:** `{enhanced_caption}`
             """
 
-            # 3단계: 음악 매칭
-            progress(0.7, desc="🎵 어울리는 음악 찾는 중...")
+            # Step 3: Match Music
+            progress(0.7, desc="🎵 Finding matching music...")
             time.sleep(0.2)
             
             q_norm = np.linalg.norm(query_vector)
@@ -89,16 +91,16 @@ class MusicRecommenderApp:
             # Generate the HTML with embedded audio players
             results_html = self._format_results(top_indices, similarities)
             
-            # 4단계: 완료
-            progress(1.0, desc="✨ 완료!")
-            status_msg = f"✅ 추천 완료! {topk}곡을 찾았습니다."
+            # Step 4: Done
+            progress(1.0, desc="✨ Done!")
+            status_msg = f"✅ Success! Found top {topk} songs."
             
             # [MODIFIED] Now only returning 3 things (removed the separate audio file path)
             return status_msg, results_html, analysis_text
             
         except Exception as e:
             traceback.print_exc()
-            return f"❌ Error occurred: {str(e)}", "", None, ""
+            return f"❌ Error occurred: {str(e)}", "", ""
         
         finally:
             if temp_file_path and os.path.exists(temp_file_path):
@@ -146,6 +148,7 @@ class MusicRecommenderApp:
                     🎭 {mood} | 🎸 {genre}
                 </div>
                 <div style='text-align: right; font-size: 0.8em; opacity: 0.8;'>Similarity: {score:.3f}</div>
+                {audio_html}
             </div>"""
         return html + "</div>"
 
@@ -153,7 +156,7 @@ def create_interface():
     try:
         app = MusicRecommenderApp()
     except Exception as e:
-        print(f"❌ 앱 초기화 실패: {e}")
+        print(f"❌ App initialization failed: {e}")
         return gr.Blocks()
 
     with gr.Blocks(theme=gr.themes.Soft(), title="Music Mood Matcher") as demo:
@@ -161,23 +164,25 @@ def create_interface():
             """
             <div style="text-align: center; margin-bottom: 20px;">
                 <h1>🎵 AI Music Mood Matcher</h1>
-                <p>이미지를 업로드하면 AI가 분위기를 분석해 딱 맞는 음악을 추천해드립니다.</p>
+                <p>Upload an image to get a perfectly matching playlist based on its vibe!</p>
             </div>
             """
         )
         
         with gr.Row():
+            # Left Column: Input
             with gr.Column(scale=4):
-                image_input = gr.Image(label="📸 이미지 업로드", type="pil", height=450)
+                image_input = gr.Image(label="📸 Upload Image", type="pil", height=450)
                 with gr.Row():
-                    topk_slider = gr.Slider(minimum=1, maximum=10, value=3, step=1, label="추천 개수")
-                    submit_btn = gr.Button("✨ 음악 추천받기", variant="primary", scale=2)
+                    topk_slider = gr.Slider(minimum=1, maximum=10, value=3, step=1, label="Recommendations")
+                    submit_btn = gr.Button("✨ Recommend Music", variant="primary", scale=2)
 
+            # Right Column: Output
             with gr.Column(scale=5):
-                analysis_output = gr.Markdown(label="🧠 AI Analysis Result")
-                audio_output = gr.Audio(label="🎧 Top Song Preview", type="filepath")
                 caption_output = gr.Textbox(label="Status", show_label=False, text_align="center")
-                results_output = gr.HTML(label="Playlist")
+                analysis_output = gr.Markdown(label="🧠 AI Analysis Result")
+                results_output = gr.HTML(label="Playlist") 
+                # [MODIFIED] Removed the single global audio player!
         
         submit_btn.click(
             fn=lambda img, k: app.recommend(img, int(k)),
@@ -191,5 +196,4 @@ def create_interface():
 if __name__ == "__main__":
     demo = create_interface()
     demo.queue()
-    # Using port 7861 to avoid conflicts
-    demo.launch(server_name="0.0.0.0", share=False)
+    demo.launch(server_name="0.0.0.0", share=True)
