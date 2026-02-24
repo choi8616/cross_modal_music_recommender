@@ -1,11 +1,10 @@
-# 🎵 Image-to-Music Recommender
+# 🎵 Cross Modal Music Recommender
 
 **AI-Powered Music Recommendation System Based on Image Mood Analysis**
 
 [![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-red.svg)](https://pytorch.org/)
 [![Gradio](https://img.shields.io/badge/Gradio-4.0+-orange.svg)](https://gradio.app/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ## 📖 Overview
 
@@ -14,18 +13,18 @@ An intelligent music recommendation system that analyzes the emotional atmospher
 ### 🎯 Key Features
 
 #### 🔧 Music Database Building (Setup)
-- 📦 **Music Vectorization**: Convert audio files to 512-dimensional embeddings using CLAP
-- 💾 **Vector Database**: Pre-compute and store music embeddings for fast retrieval
-- 🎵 **Metadata Management**: Organize tracks with title, mood, and genre tags
-- ➕ **Easy Addition**: Add new music files -> rebuild database
+- **Music Vectorization**: Convert audio files to 512-dimensional embeddings using CLAP
+- **Vector Database**: Pre-compute and store music embeddings for fast retrieval
+- **Metadata Management**: Organize tracks with title, mood, and genre tags
+- **Easy Addition**: Add new music files -> rebuild database
 
 #### 🚀 Music Recommendation (Real-time)
-- 🖼️ **Image Analysis**: Automatic image understanding using BLIP
-- 🎵 **Text Enhancement**: Augment captions with mood-related keywords
-- 🎵 **Multimodal Matching**: Cross-modal embedding with CLAP (Text Encoder)
-- 📊 **Vector Search**: Cosine similarity-based retrieval
-- 🎨 **Interactive UI**: Simply web interface built with Gradio
-- 🎧 **Instant Preview**: Real-time audio playback of recommended tracks
+- **Image Analysis**: Automatic image understanding using BLIP
+- **Text Enhancement**: Augment captions with mood-related keywords
+- **Multimodal Matching**: Cross-modal embedding with CLAP (Text Encoder)
+- **Vector Search**: Cosine similarity-based retrieval
+- **Interactive UI**: Simply web interface built with Gradio
+- **Instant Preview**: Real-time audio playback of recommended tracks
 
 ## 🛠️ Technology Stack
 
@@ -54,7 +53,7 @@ pip
 
 ```bash
 # Clone the repository
-git clone https://github.com/choi8616/music_mood_analyzer.git
+git clone https://github.com/choi8616/cross_modal_music_recommender.git
 cd music-mood-analyzer
 
 # Install dependencies
@@ -65,10 +64,12 @@ pip install -r requirements.txt
 
 #### Web UI (Recommended)
 
+Link: https://huggingface.co/spaces/dayunsom/Image_to_music_recommender
+
+If the link doesn't work, manually open up the host
 ```bash
 python app.py
 ```
-
 Then open your browser and navigate to `http://localhost:7860`
 
 #### CLI Interface
@@ -84,10 +85,32 @@ python recommend.py path/to/image.jpg --topk 10
 python recommend.py path/to/image.jpg --play
 ```
 
+#### 📦 Adding New Music
+
+```bash
+# 1. Place audio files in new_music/
+cp your_song.mp3 new_music/
+
+# 2. Rebuild the database
+python music_to_vector.py
+
+# 3. Restart the app
+python app.py
+```
+
+#### 🧪 Testing
+
+```bash
+# Test with sample images
+python recommend.py test_images/sunset.jpg
+python recommend.py test_images/forest.jpg
+python recommend.py test_images/city.jpg
+```
+
 ## 📂 Project Structure
 
 ```
-music-mood-analyzer/
+cross_modal_music_recommender/
 ├── app.py                          # Gradio web interface (main)
 ├── recommend.py                    # CLI interface
 ├── image_to_vector.py              # Image → Vector conversion
@@ -103,7 +126,7 @@ music-mood-analyzer/
 └── README.md
 ```
 
-## 🧠 How It Works
+## 🧠 Workflow
 
 ### Pipeline Architecture
 
@@ -141,101 +164,32 @@ music-mood-analyzer/
 └─────────────────────────────────┘
 ```
 
-### Technical Details
-
-1. **Image Captioning (BLIP)**
-   - Converts images to descriptive text
-   - Model: `Salesforce/blip-image-captioning-base`
-   - Output: Natural language description
-
-2. **Caption Enhancement**
-   - Adds mood-related keywords
-   - Example: `"{caption}, atmospheric, mood, cinematic"`
-
-3. **Text Embedding (CLAP)**
-   - Encodes text into 512-dimensional vector
-   - Model: `laion/clap-htsat-unfused`
-   - Shared embedding space with audio
-
-4. **Audio Database**
-   - Pre-computed audio embeddings (CLAP audio encoder)
-   - L2-normalized for cosine similarity
-
-5. **Similarity Search**
-   - Computes: `similarity = query_vector @ database_vectors.T`
-   - Returns top-K highest scores
-
 ## 📊 Performance
 
 - **Inference Speed**: ~3 seconds (CPU)
-- **Music Database Size**: 10 tracks
+- **Music Database Size**: 100 tracks
 - **Embedding Dimension**: 512
 - **Similarity Metric**: Cosine Similarity
-
-## 🎓 Key Learnings
-
-### 1. Multimodal AI
-Understanding how to match different modalities(image, text, audio) using shared embedding spaces.
-
-### 2. Vector Similarity Search
-Implementing efficient similarity retrieval in high-dimensional vector spaces.
-
-### 3. Foundation Models
-Leveraging large-scale pre-trained models (BLIP, CLAP) for downstream tasks.
-
-### 4. Rapid Prototyping
-Building production ready web interfaces quickly with Gradio.
-
-## 🔮 Future Enhancements
-
-- [ ] Expand music database (more tracks)
-- [ ] Enhance frontend (fix errors, add feature of playing music when track is clicked)
-- [ ] Display image analysis on screen
-- [ ] Organize backend and README completely
 
 ## 📸 Screenshots
 
 ### Main Interface
-
-### Upload & Analysis
+![Main Interface](./main_interface.png)
 
 ### Recommendation Results
+![Recommendation Results](./result.png)
 
-## 🎥 Demo
+## ⚠️ Limitations
 
+- Currently, the music database contains about 100 curated tracks; diversity is limited.
+- Mood estimation is based on a single image caption and simple text enhancement.
 
-## 📦 Adding New Music
+## 🔭 Future Work
 
-```bash
-# 1. Place audio files in new_music/
-cp your_song.mp3 new_music/
+- Expand the music database with more diverse genres and moods.
+- Add user feedback loop to adapt recommendations.
+- Explore more advanced text-image-audio alignment models.(Enhance similarity rates)
 
-# 2. Rebuild the database
-python music_to_vector.py
-
-# 3. Restart the app
-python app.py
-```
-
-## 🧪 Testing
-
-```bash
-# Test with sample images
-python recommend.py test_images/sunset.jpg
-python recommend.py test_images/forest.jpg
-python recommend.py test_images/city.jpg
-```
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **BLIP**: [Salesforce Research](https://github.com/salesforce/BLIP)
-- **CLAP**: [LAION](https://github.com/LAION-AI/CLAP)
-- **Gradio**: [Gradio Team](https://gradio.app/)
-- **Hugging Face**: [Transformers Library](https://huggingface.co/docs/transformers/)
 
 ## 👤 Author
 
@@ -247,16 +201,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **Donghyun Han**
 - GitHub:
 - LinkedIn: 
-- Email: 
-
-## 📈 Project Status
-
-🚀 **Active Development** - This project is currently being enhanced with new features.
-
----
-
-<div align="center">
-
-⭐ **If you found this project interesting, please consider giving it a star!** ⭐
-
-</div>
+- Email:
