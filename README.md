@@ -199,6 +199,6 @@ cross_modal_music_recommender/
 - Email: choidrgn@gmail.com
 
 **Donghyun Han**
-- GitHub:
-- LinkedIn: 
-- Email:
+- GitHub: https://github.com/ThomDong
+- LinkedIn: https://www.linkedin.com/in/donghyun-hahn-098590272/
+- Email: dhahn@ucsd.edu
