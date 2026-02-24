@@ -10,7 +10,7 @@
 
 An intelligent music recommendation system that analyzes the emotional atmosphere of images using multimodal AI and recommends a music based on it.
 
-### 🎯 Key Features
+## 🎯 Key Features
 
 #### 🔧 Music Database Building (Setup)
 - **Music Vectorization**: Convert audio files to 512-dimensional embeddings using CLAP
