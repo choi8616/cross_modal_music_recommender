@@ -239,10 +239,15 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👤 Author
 
-**Your Name**
+**Yonghyeon Choi**
+- GitHub: https://github.com/choi8616?tab=repositories
+- LinkedIn: https://www.linkedin.com/in/yonghyeon-choi-45264133a/
+- Email: choidrgn@gmail.com
+
+**Donghyun Han**
 - GitHub:
-- LinkedIn:
-- Email:
+- LinkedIn: 
+- Email: 
 
 ## 📈 Project Status
 
